@@ -1,22 +1,20 @@
-# Sources and integration by agent
+# Installation and local harness support
 
-Contents: [installation](#local-installation-and-invocation), [Cursor](#cursor),
-[Claude Code](#claude-code), [Codex and ChatGPT](#codex-and-chatgpt),
-[GitHub Copilot](#github-copilot), [other environments](#unlisted-agent-or-restricted-environment).
+Install the **entire `chat-report` folder**, including both launchers, `SKILL.md`,
+`scripts/`, `references/`, `assets/`, and any agent metadata. A standalone
+`SKILL.md` is not a working distribution: the bundled commands and resources are
+required. Use one installation location per host to avoid duplicate discovery.
 
-Use this as a discovery guide, not a guarantee of access. Verified on 2026-09-29.
-Confirm the installed version and current documentation when the schema differs.
-Do not create an administrative integration or enable telemetry as a side effect
-of producing a report.
+The agent follows [SKILL.md](../SKILL.md) and the [command reference](commands.md).
+It selects a session, runs the packaged command, checks diagnostics, and displays
+the compiled HTML. It does not invent a collector, run loose parsing functions,
+query arbitrary databases, or assemble a replacement report during invocation.
 
-## Local installation and invocation
+## Skill discovery locations
 
-Copy the entire folder under the name `chat-report`, preserving `SKILL.md`,
-`references/`, `scripts/`, and `assets/`. Use only one location per
-installation to avoid duplicates. Resolve `~` to the operating system's home
-directory; do not assume Bash is available on Windows. If distributing only
-`SKILL.md`, retain its rules and omit unavailable resources without claiming to
-have executed them.
+These are installation locations already documented for the named surfaces.
+Resolve `~` to the account running that host; verify host skill discovery when
+using an unfamiliar version or remote workspace.
 
 | Host | Project directory | Personal alternative | Invocation |
 |---|---|---|---|
@@ -24,120 +22,67 @@ have executed them.
 | Claude Code | `.claude/skills/chat-report/` | `~/.claude/skills/chat-report/` | `/chat-report` |
 | Codex CLI/IDE | `.agents/skills/chat-report/` | `~/.agents/skills/chat-report/` | `$chat-report` or selection through `/skills` |
 | Copilot CLI | `.github/skills/chat-report/` or `.agents/skills/chat-report/` | `~/.copilot/skills/chat-report/` | `/chat-report` |
-| ChatGPT with the skill installed | The host's own skills directory | Managed by the host | Select `@chat-report` |
-| Other agent | Location documented by the host | As supported | Load SKILL.md as a skill, command, or instructions |
+| ChatGPT with the skill installed | Host-managed skills directory | Managed by the host | Select the installed skill |
 
-Do not claim the skill is installed on the user's computer merely because it was
-saved in another environment. Local Cursor skills do not automatically reach
-remote sessions. Do not generalize Copilot CLI support to every IDE. Verify host
-discovery before promising that a command will work. `agents/openai.yaml` is
-optional metadata; other agents may ignore it.
+For Antigravity or another surface, use its documented skill installation
+mechanism and preserve the full folder. This reference does not prescribe an
+unverified installation path or promise a slash command in every interface.
+`agents/openai.yaml` is optional discovery metadata and may be ignored by other
+hosts. Installing in one environment does not install the skill on another
+computer, in WSL, or in an SSH/container session.
 
-Installation sources:
+Installation references:
+
 - [Cursor — Skills](https://cursor.com/docs/skills)
 - [Claude Code — Skills](https://code.claude.com/docs/en/skills)
 - [OpenAI — Build skills](https://learn.chatgpt.com/docs/build-skills)
 - [GitHub — Copilot CLI skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills)
 
-## Cursor
+## Executable entry points
 
-Follow [cursor-local.md](cursor-local.md) before concluding that data is
-unavailable. Use `scripts/inspect_cursor.py` to read only the correct composer's
-metadata in `state.vscdb`, with schema detection. The transcript and
-`ai-code-tracking.db` alone do not exhaust local sources. The collector returns
-candidates, not billed totals, and does not guarantee that the installed version
-has populated counters.
+| Computer | Bundled entry point | Prerequisite |
+|---|---|---|
+| Windows | `chat-report.ps1` | Windows PowerShell 5.1 or PowerShell 7, plus Python 3.10+ |
+| Linux/macOS | `sh chat-report.sh` | POSIX `sh`, plus Python 3.10+ |
+| Windows/Linux/macOS with PowerShell 7 | `pwsh -File chat-report.ps1` | PowerShell 7, plus Python 3.10+ |
+| Host with direct Python execution | `python3 scripts/chat_report.py` | Python 3.10+; use the installed interpreter's actual command |
 
-Prioritize usage exports and session logs that are actually available. When
-authorized access to the Admin API exists, check `conversationId`, which may be
-absent; without a conversation link, do not attribute events precisely to this
-chat. Token data is also optional. Distinguish `chargedCents` (attributed amount,
-including any applicable fee) from model cost in `tokenUsage.totalCents`. Check
-the usage and billing type: usage included in the plan does not demonstrate an
-additional payment. Respect source delays and update limits; do not treat a
-recent absence as zero.
+Both launchers use the same standard-library engine. `doctor` checks runtime and
+local adapter availability; `sessions` lists bounded candidates; `report`
+collects and compiles the selected session; `open` requests local visual display.
+Use [commands.md](commands.md) for arguments and copyable commands.
 
-Do not assume every user or plan has Admin API access. In the CLI, inspect the
-available structured output; do not use `duration_api_ms` as an independent
-measurement of `duration_ms` when the implementation makes them equal. Without
-usage fields, do not reconstruct tokens from duration.
+The collection and rendering workflow is offline. It does not download packages,
+prices, or parsers, enable telemetry, launch a paid model request, install an
+extension, elevate privileges, or change execution policy. If the PowerShell file
+is blocked, an already available Python interpreter can run the **same bundled
+engine** directly. If Python, the full folder, local data, or a required permission
+is missing, state that concrete prerequisite. Do not replace the command suite
+with ad hoc code to imply that an unsupported environment worked.
 
-Sources:
-- [Cursor — Admin API](https://cursor.com/docs/account/teams/admin-api)
-- [Cursor CLI — Output format](https://cursor.com/docs/cli/reference/output-format)
+## Bundled source adapters
 
-## Claude Code
+| `--harness` | Supported source family | Detailed reference |
+|---|---|---|
+| `cursor` | Local SQLite composer metadata and recognized bubble counters | [Cursor local adapter](cursor-local.md) |
+| `codex` | Rollout JSONL with token snapshots and explicit turn events | [Codex and Claude adapters](codex-claude.md) |
+| `claude` | Claude Code session JSONL and supported Agent SDK result exports | [Codex and Claude adapters](codex-claude.md) |
+| `github-copilot` | Copilot CLI event logs and captured usage/shutdown events | [Copilot and Antigravity adapters](copilot-antigravity.md) |
+| `antigravity` | Supported local transcripts and official headless result exports | [Copilot and Antigravity adapters](copilot-antigravity.md) |
 
-Consult the usage summary available in the installed version, such as `/usage`
-in the currently documented versions, or data exported by the user. Keep
-estimated cost labeled as an estimate, including under subscriptions. Check
-session boundaries, resumptions, and resets before using totals; do not treat
-older command names as a universal interface.
+These adapters cover known schemas, not every product sharing a brand. Copilot
+CLI data does not establish support for every Copilot IDE chat, and Codex local
+rollouts do not imply access to ChatGPT's internal session metrics. Native
+transcripts, usage exports, and current-session hints differ by host. Follow the
+adapter's recorded diagnostic instead of guessing undocumented fields.
 
-When OpenTelemetry is already enabled, look for token, cost, duration, and ID
-metrics/events to associate the session and subagents. Inspect the semantics of
-`claude_code.active_time.total` and its `type` dimension; activity recorded by
-the CLI does not prove the human was exclusively attending to this task. A
-`total_tokens` counter in a subagent completion event may represent only its last
-request, not its entire execution.
+Run on the computer and account holding the conversation. A remote agent may
+accept an explicitly available supported export via `--source`; it cannot read
+the user's desktop through an unrelated filesystem. Preserve exact session
+identity and avoid selecting the newest candidate automatically. An unsupported
+binary format requires a supported export or a maintained adapter extension,
+not an improvised decoder.
 
-In the statusline, do not interpret `context_window.total_input_tokens` and
-`total_output_tokens` as accumulated billed usage without checking the schema:
-the current documentation describes them relative to the context/last response.
-Separate session duration from API duration.
-
-Sources:
-- [Claude Code — Costs](https://code.claude.com/docs/en/costs)
-- [Claude Code — Monitoring](https://code.claude.com/docs/en/monitoring-usage)
-- [Claude Code — Statusline](https://code.claude.com/docs/en/statusline)
-
-## Codex and ChatGPT
-
-Use the usage/rollout data that the host actually exposes for the correct thread.
-In app-server, `thread/tokenUsage/updated` provides usage updates;
-`turn/started`, `turn/completed`, and item events contain IDs useful for
-reconstruction. Inspect the schema and distinguish cumulative usage from the
-last turn; do not add both together.
-
-A tool with `durationMs` does not demonstrate the duration of the entire session.
-Associate child sessions through collaboration links. Do not assume the ChatGPT
-interface exposes rollouts, private metrics, or local files. Subscription-limit
-percentages are not tokens or money. If only the visible conversation is
-available, produce a partial report.
-
-Sources:
-- [OpenAI — App server](https://learn.chatgpt.com/docs/app-server)
-- [OpenAI — Codex pricing](https://developers.openai.com/codex/pricing)
-
-## GitHub Copilot
-
-Identify the surface: CLI, SDK, or IDE chat. In the CLI, consult `/usage` when
-available, preserving tokens by model and credits in their original unit. If
-using OpenTelemetry that is already enabled, do not interpret
-`github.copilot.cost` as money: the CLI documentation describes it as a billing
-multiplier.
-
-In the SDK, check the version: `assistant.usage` events may be ephemeral and may
-not reappear when resuming a session. Totals from `session.usage.getMetrics`
-depend on experimental support. Do not interpret
-`session.usage_info.currentTokens` as accumulated usage. Without a complete
-history, declare partial coverage even if the session resumes normally.
-
-Sources:
-- [GitHub — Copilot CLI reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference)
-- [GitHub — SDK usage and billing](https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/usage-and-billing)
-
-## Unlisted agent or restricted environment
-
-Inspect available resources without assuming paths or database names. If an
-official usage source is available, adapt it to the categories in SKILL.md and
-record the mapping. Without a terminal, calculate using an available native
-capability or present reliable counters without unverifiable aggregation.
-Without telemetry/timestamps, report evidenced deliverables and mark missing
-metrics as unavailable.
-
-Look up current sources for rates and exchange rates only when the calculation
-requires them. Do not use these integration pages as evidence of a particular
-rate. For future tracking, use the manual markers in SKILL.md or propose separate
-instrumentation when requested; do not promise to recover data that was never
-recorded.
+A visual report also requires a native HTML/artifact preview or an OS browser on
+the relevant desktop. When none is available, deliver the compiled HTML through
+the host and state that no preview was displayed. See [HTML delivery](html-report.md).

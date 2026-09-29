@@ -1,61 +1,107 @@
 # Compiled HTML report
 
-Contents: [visual delivery](#visual-delivery), [execution](#execution),
-[presentation contract](#presentation-contract),
+Contents: [visual delivery](#visual-delivery), [command execution](#command-execution),
+[maintainer presentation contract](#presentation-contract),
 [fictional example](#fictional-example), [guarantees and limitations](#guarantees-and-limitations).
+
+Normal use follows the bundled command pipeline in [SKILL.md](../SKILL.md) and
+[commands.md](commands.md). The runner selects the maintained adapter, normalizes
+evidence, calculates metrics, creates presentation data, and compiles the HTML.
+The agent must not create a temporary collector, hand-build presentation JSON,
+write replacement rendering functions, or design a fresh HTML template for each
+invocation. Install and retain the full skill folder; `SKILL.md` alone is not
+an executable distribution.
 
 ## Visual delivery
 
-The default result is a **fully populated** HTML document that is polished,
-responsive, and auditable. Produce the final file and open it in the native
-HTML preview, artifact, or browser surface provided by the host. Showing source
-code or a download link does not replace a preview when one is available.
-Save the complete document to the destination authorized by the host, even when
-the preview uses a fragment. Suggested name: `chat-report-<session>-<cutoff>.html`.
+The default result is a **fully populated**, responsive and auditable HTML file.
+Display that file using the host's native HTML preview, artifact or browser
+surface. A code editor or download link does not replace an available visual
+preview. Preserve the full document and generated evidence/presentation sidecars
+at the host's required durable destination. Use the runner's session/cutoff-specific
+default filename or supply `--output`; do not overwrite an unrelated report.
 
-Use `--fragment` only for hosts that accept CSS and static HTML in a native visual
-surface. It contains `<style>` and `<main>`, without `doctype`, `html`, `head`,
-`body`, or JavaScript. CSS is scoped to `.chat-report`. Do not inject the complete
-document into an API that accepts only fragments. If the surface strips styles,
-prefer a preview of the complete file. If no visual capability exists, deliver
-the HTML and state the limitation without claiming that a preview was shown.
+When a native surface requires a fragment, invoke the runner with `--fragment`.
+It also preserves the complete document. The fragment contains `<style>` and
+`<main>`, without `doctype`, `html`, `head`, `body` or JavaScript; its CSS is scoped
+to `.chat-report`. Follow the surface's actual display contract rather than
+inserting a complete document into a fragment-only API. If styles are stripped,
+use a full-file preview when available.
 
-The layout contains four key metrics, an evidence table, optional breakdowns by
-model or agent, supported events, deliverables, and limitations. Do not invent
-charts, progress bars, timelines, or distributions without supporting data.
-The HTML remains readable without JavaScript, offline, and in print.
+On the user's local desktop, `--open` or `open --path <report.html>` requests the
+OS browser handler. A successful launch request does not prove that the user saw
+rendered content, especially in a remote/container environment. Inspect an
+available preview before claiming display. If the host has no visual surface,
+deliver the compiled HTML and state that no preview was displayed. Do not publish
+the report online, install an extension, or enable remote browser access as a
+side effect.
 
-The skill instructions are written in English; the **report follows the user's
-language or explicit language request**. Set `language` to `en` or `pt-BR` in the
-presentation JSON, and write all supplied labels, notes, and other text in that
-same language. The renderer defaults to English if `language` is omitted. It
-localizes built-in headings, fallback labels, status and coverage badges, and
-HTML `lang` attributes. It does not translate supplied text or reformat values.
-For other languages, generate an equivalent localized HTML document or adapt a
-copy of the renderer/template, preserving every evidence and safety rule. Do
-not pass an unsupported language to this renderer or silently force English.
+The maintained layout contains four main metrics, an evidence table, model/agent
+breakdowns when supported, sources and limitations. The renderer contract also
+supports attributed events and deliverables for maintained integrations; the
+normal runner does not invent these to fill space. The document remains readable
+offline, without JavaScript, and in print.
 
-## Execution
+The skill instructions are English. The bundled report locales are **`en` and
+`pt-BR`**: choose `--language` from the user's request/conversation, as specified
+in `SKILL.md`. Built-in headings, diagnostics, badges, fallback text, number
+formatting and HTML language follow that selection through the command pipeline.
+For another requested language, disclose the current locale limit. Do not claim
+to support it, create a one-off localized template, or modify a renderer copy
+while generating a report. Additional locales require a maintained skill change.
 
-The renderer uses only the Python 3 standard library. From the skill directory:
+## Command execution
 
-```sh
-python3 scripts/render_report.py presentation.json --output chat-report.html
-python3 scripts/render_report.py presentation.json --output chat-report-fragment.html --fragment
+The entire workflow uses the existing Python 3.10+ standard-library engine with
+PowerShell or POSIX shell launchers. For example, from the installed skill folder:
+
+```powershell
+& .\chat-report.ps1 report --harness codex --session "SESSION_ID" --language en --open
+& .\chat-report.ps1 render --input "evidence.json" --output "report.html" --language pt-BR
+& .\chat-report.ps1 render --input "evidence.json" --output "report-fragment.html" --fragment --language pt-BR
 ```
 
-`--overwrite` explicitly permits replacing an existing file. Without it, the
-file is preserved and execution fails. The renderer creates required parent
-directories, rejects an output path equal to the input path, and prints a JSON
-object to stdout with `output` and `format` (`standalone` or `fragment`). Errors
-produce an `error` object on stderr and exit code 2; success returns 0.
+```sh
+sh "/path/to/chat-report/chat-report.sh" report --harness claude --session "SESSION_ID" --language en --open
+```
 
-The script validates **presentation data**. It does not consume `calculate.py`
-output directly or recalculate tokens, durations, currencies, or costs. Prepare
-the JSON after checking evidence and calculations. The same JSON generates both
-output forms. CLI help and validation errors are written in English.
+Use `doctor` for runtime/source diagnostics. A missing interpreter requires
+Python 3.10+; missing assets/scripts require the full bundle; a remote computer
+without the local source needs an accessible supported export. State the concrete
+prerequisite rather than installing packages, changing execution policy or
+substituting loose functions. The normal workflow requires no network service.
+
+`collect` saves normalized evidence. `render --input` consumes that evidence and
+reuses the deterministic calculation/presentation pipeline; it does **not** ask
+the agent to prepare presentation JSON. `report` does both in one invocation.
+Existing outputs are preserved unless `--overwrite` is explicit. Read the JSON
+command result and diagnostics and surface failures rather than sending an
+unpopulated template as a successful report.
+
+### Lower-level renderer for maintainers
+
+The rest of this file documents the renderer's internal presentation contract
+for maintaining the skill, adding a supported integration and running fixtures.
+It is not an alternative workflow for routine `/chat-report` calls. The runner
+creates this data and calls the lower-level renderer. Maintainer examples:
+
+```sh
+python3 scripts/render_report.py presentation.json --output renderer-fixture.html
+python3 scripts/render_report.py presentation.json --output renderer-fragment-fixture.html --fragment
+```
+
+This lower-level renderer validates presentation structure; it does not collect
+logs, calculate token/duration totals, consume `calculate.py` output directly,
+translate supplied free text, or verify evidence authenticity. It creates parent
+directories, rejects identical input/output paths, and preserves an existing
+output unless `--overwrite` is set. It prints JSON with `output` and `format` on
+success; a validation error produces an `error` object on stderr and exit code 2.
 
 ## Presentation contract
+
+**Maintainer reference:** the command pipeline generates this object. Do not ask
+the reporting agent to fill it by hand. Supplied text must already match the
+selected locale; the low-level renderer does not translate it or reformat values.
 
 Unknown fields, duplicate JSON keys, `NaN`, incorrect types, empty strings,
 duplicate IDs, and references to undefined sources are rejected. Optional
@@ -122,7 +168,7 @@ The renderer **does not automatically redact** text: prepare safe data first.
 
 ## Fictional example
 
-This JSON is **FICTIONAL**, only to exercise the layout. Do not reuse its numbers,
+This maintainer fixture is **FICTIONAL**, only to exercise the layout. Do not reuse its numbers,
 dates, price, or deliverables in a real report.
 
 ```json
@@ -188,9 +234,10 @@ Do not add events or deliverables merely to fill empty space.
   services, environment variables, logs, prices, or telemetry.
 - The template contains only structure and styles, without sample metrics or
   events. Do not deliver the placeholder template as if it were the final report.
-- The contract preserves supplied text. The agent must distinguish subtotals,
-  totals, actual billing, reference costs, estimates, declarations, and missing
-  data; confirm events and deliverables; and avoid unsupported precision.
+- The contract preserves supplied text. The maintained presentation pipeline must distinguish subtotals,
+  totals, actual billing, reference costs, estimates, declarations and missing
+  data. Any supported event/deliverable extension requires attributed evidence
+  and appropriate precision.
 - Printing uses dedicated CSS. Inspect the final report in the available host,
   especially on narrow screens or with long text. The fragment uses scoped
   styles, but its appearance can also depend on the host's rules.
