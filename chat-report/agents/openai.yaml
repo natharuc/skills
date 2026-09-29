@@ -1,0 +1,4 @@
+interface:
+  display_name: "/chat-report"
+  short_description: "Relatório visual de tokens, tempo e custo do chat"
+  default_prompt: "Use $chat-report para compilar e exibir o relatório HTML desta conversa, com tokens, tempo, custo e fontes verificadas."
