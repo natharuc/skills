@@ -1,23 +1,39 @@
-# Fontes e integração por agente
+# Sources and integration by agent
 
-Usar como mapa de descoberta, não como garantia de acesso. Verificado em 29/09/2026. Confirmar a versão instalada e a documentação vigente quando o esquema divergir. Não criar integração administrativa nem habilitar telemetria como efeito colateral de um relatório.
+Contents: [installation](#local-installation-and-invocation), [Cursor](#cursor),
+[Claude Code](#claude-code), [Codex and ChatGPT](#codex-and-chatgpt),
+[GitHub Copilot](#github-copilot), [other environments](#unlisted-agent-or-restricted-environment).
 
-## Instalação local e invocação
+Use this as a discovery guide, not a guarantee of access. Verified on 2026-09-29.
+Confirm the installed version and current documentation when the schema differs.
+Do not create an administrative integration or enable telemetry as a side effect
+of producing a report.
 
-Copiar a pasta completa com nome `chat-report`, preservando `SKILL.md` e `references/`; manter `scripts/` para cálculo opcional. Usar somente uma localização por instalação para evitar duplicatas. Resolver `~` como o diretório pessoal do sistema; não assumir Bash no Windows. Se distribuir apenas `SKILL.md`, conservar as regras nele e omitir recursos indisponíveis sem alegar tê-los executado.
+## Local installation and invocation
 
-| Host | Pasta no projeto | Alternativa pessoal | Invocação |
+Copy the entire folder under the name `chat-report`, preserving `SKILL.md`,
+`references/`, `scripts/`, and `assets/`. Use only one location per
+installation to avoid duplicates. Resolve `~` to the operating system's home
+directory; do not assume Bash is available on Windows. If distributing only
+`SKILL.md`, retain its rules and omit unavailable resources without claiming to
+have executed them.
+
+| Host | Project directory | Personal alternative | Invocation |
 |---|---|---|---|
-| Cursor | `.cursor/skills/chat-report/` ou `.agents/skills/chat-report/` | `~/.cursor/skills/chat-report/` | `/chat-report` |
+| Cursor | `.cursor/skills/chat-report/` or `.agents/skills/chat-report/` | `~/.cursor/skills/chat-report/` | `/chat-report` |
 | Claude Code | `.claude/skills/chat-report/` | `~/.claude/skills/chat-report/` | `/chat-report` |
-| Codex CLI/IDE | `.agents/skills/chat-report/` | `~/.agents/skills/chat-report/` | `$chat-report` ou seleção por `/skills` |
-| Copilot CLI | `.github/skills/chat-report/` ou `.agents/skills/chat-report/` | `~/.copilot/skills/chat-report/` | `/chat-report` |
-| ChatGPT com skill instalada | Diretório de skills do próprio host | Gerenciado pelo host | Selecionar `@chat-report` |
-| Outro agente | Localização documentada pelo host | Conforme suporte | Carregar o SKILL.md como skill, comando ou instruções |
+| Codex CLI/IDE | `.agents/skills/chat-report/` | `~/.agents/skills/chat-report/` | `$chat-report` or selection through `/skills` |
+| Copilot CLI | `.github/skills/chat-report/` or `.agents/skills/chat-report/` | `~/.copilot/skills/chat-report/` | `/chat-report` |
+| ChatGPT with the skill installed | The host's own skills directory | Managed by the host | Select `@chat-report` |
+| Other agent | Location documented by the host | As supported | Load SKILL.md as a skill, command, or instructions |
 
-Não afirmar instalação no computador do usuário por ter salvo a skill em outro ambiente. Skills locais do Cursor não chegam automaticamente a sessões remotas. Não extrapolar suporte do Copilot CLI para todas as IDEs. Conferir a descoberta no host antes de prometer o comando. O arquivo `agents/openai.yaml` é metadado opcional; os outros agentes podem ignorá-lo.
+Do not claim the skill is installed on the user's computer merely because it was
+saved in another environment. Local Cursor skills do not automatically reach
+remote sessions. Do not generalize Copilot CLI support to every IDE. Verify host
+discovery before promising that a command will work. `agents/openai.yaml` is
+optional metadata; other agents may ignore it.
 
-Fontes de instalação:
+Installation sources:
 - [Cursor — Skills](https://cursor.com/docs/skills)
 - [Claude Code — Skills](https://code.claude.com/docs/en/skills)
 - [OpenAI — Build skills](https://learn.chatgpt.com/docs/build-skills)
@@ -25,51 +41,103 @@ Fontes de instalação:
 
 ## Cursor
 
-Executar [cursor-local.md](cursor-local.md) antes de concluir indisponibilidade. Usar `scripts/inspect_cursor.py` para ler somente metadados do composer correto em `state.vscdb`, com detecção de schema. A transcrição e `ai-code-tracking.db` sozinhos não esgotam as fontes locais. O coletor retorna candidatos, não totais faturados, e não garante que a versão instalada tenha contadores preenchidos.
+Follow [cursor-local.md](cursor-local.md) before concluding that data is
+unavailable. Use `scripts/inspect_cursor.py` to read only the correct composer's
+metadata in `state.vscdb`, with schema detection. The transcript and
+`ai-code-tracking.db` alone do not exhaust local sources. The collector returns
+candidates, not billed totals, and does not guarantee that the installed version
+has populated counters.
 
-Priorizar exportação de consumo e logs da sessão efetivamente disponíveis. Quando houver acesso autorizado à Admin API, verificar `conversationId`, que pode estar ausente; sem vínculo de conversa, não atribuir precisamente os eventos a este chat. A presença de tokens também é opcional. Distinguir `chargedCents` (valor atribuído, incluindo taxa aplicável) de custo do modelo em `tokenUsage.totalCents`. Conferir tipo de uso e faturamento: consumo incluído no plano não demonstra pagamento adicional. Respeitar atraso e limites de atualização da fonte; não tratar ausência recente como zero.
+Prioritize usage exports and session logs that are actually available. When
+authorized access to the Admin API exists, check `conversationId`, which may be
+absent; without a conversation link, do not attribute events precisely to this
+chat. Token data is also optional. Distinguish `chargedCents` (attributed amount,
+including any applicable fee) from model cost in `tokenUsage.totalCents`. Check
+the usage and billing type: usage included in the plan does not demonstrate an
+additional payment. Respect source delays and update limits; do not treat a
+recent absence as zero.
 
-Não pressupor que todo usuário/plano tenha Admin API. No CLI, inspecionar a saída estruturada disponível; não usar `duration_api_ms` como medição independente de `duration_ms` quando a implementação os iguala. Sem campos de uso, não reconstruir tokens a partir da duração.
+Do not assume every user or plan has Admin API access. In the CLI, inspect the
+available structured output; do not use `duration_api_ms` as an independent
+measurement of `duration_ms` when the implementation makes them equal. Without
+usage fields, do not reconstruct tokens from duration.
 
-Fontes:
+Sources:
 - [Cursor — Admin API](https://cursor.com/docs/account/teams/admin-api)
 - [Cursor CLI — Output format](https://cursor.com/docs/cli/reference/output-format)
 
 ## Claude Code
 
-Consultar o resumo de uso disponível na versão, como `/usage` nas versões documentadas atualmente, ou dados que o usuário tenha exportado. Preservar custo estimado como estimativa, inclusive em assinaturas. Verificar limites da sessão, retomadas e resets antes de usar totais; não tratar nomes de comandos antigos como interface universal.
+Consult the usage summary available in the installed version, such as `/usage`
+in the currently documented versions, or data exported by the user. Keep
+estimated cost labeled as an estimate, including under subscriptions. Check
+session boundaries, resumptions, and resets before using totals; do not treat
+older command names as a universal interface.
 
-Quando já houver OpenTelemetry, procurar métricas/eventos de tokens, custo, duração e IDs para associar sessão e subagentes. Inspecionar a semântica de `claude_code.active_time.total` e sua dimensão `type`; atividade registrada pelo CLI não comprova atenção humana exclusiva à tarefa. Contador `total_tokens` em evento de conclusão de subagente pode representar somente sua última requisição, não toda a execução.
+When OpenTelemetry is already enabled, look for token, cost, duration, and ID
+metrics/events to associate the session and subagents. Inspect the semantics of
+`claude_code.active_time.total` and its `type` dimension; activity recorded by
+the CLI does not prove the human was exclusively attending to this task. A
+`total_tokens` counter in a subagent completion event may represent only its last
+request, not its entire execution.
 
-Na statusline, não interpretar `context_window.total_input_tokens` e `total_output_tokens` como acumulado faturado sem conferir o esquema: a documentação atual os descreve em relação ao contexto/última resposta. Separar duração de sessão e duração API.
+In the statusline, do not interpret `context_window.total_input_tokens` and
+`total_output_tokens` as accumulated billed usage without checking the schema:
+the current documentation describes them relative to the context/last response.
+Separate session duration from API duration.
 
-Fontes:
+Sources:
 - [Claude Code — Costs](https://code.claude.com/docs/en/costs)
 - [Claude Code — Monitoring](https://code.claude.com/docs/en/monitoring-usage)
 - [Claude Code — Statusline](https://code.claude.com/docs/en/statusline)
 
-## Codex e ChatGPT
+## Codex and ChatGPT
 
-Usar os dados de uso/rollout que o host realmente exponha para a thread correta. No app-server, `thread/tokenUsage/updated` fornece atualizações de uso; eventos `turn/started`, `turn/completed` e itens possuem IDs úteis para reconstrução. Inspecionar schema e distinguir acumulado de último turno; não somar os dois.
+Use the usage/rollout data that the host actually exposes for the correct thread.
+In app-server, `thread/tokenUsage/updated` provides usage updates;
+`turn/started`, `turn/completed`, and item events contain IDs useful for
+reconstruction. Inspect the schema and distinguish cumulative usage from the
+last turn; do not add both together.
 
-Uma tool com `durationMs` não demonstra a duração completa da sessão. Associar sessões filhas pelos vínculos de colaboração. Não presumir que a interface ChatGPT exponha rollouts, métricas privadas ou arquivos locais. Percentuais de limites de assinatura não são tokens ou dinheiro. Se só houver conversa visível, gerar relatório parcial.
+A tool with `durationMs` does not demonstrate the duration of the entire session.
+Associate child sessions through collaboration links. Do not assume the ChatGPT
+interface exposes rollouts, private metrics, or local files. Subscription-limit
+percentages are not tokens or money. If only the visible conversation is
+available, produce a partial report.
 
-Fontes:
+Sources:
 - [OpenAI — App server](https://learn.chatgpt.com/docs/app-server)
 - [OpenAI — Codex pricing](https://developers.openai.com/codex/pricing)
 
 ## GitHub Copilot
 
-Identificar a superfície: CLI, SDK ou chat de IDE. No CLI, consultar `/usage` quando disponível, preservando tokens por modelo e créditos na unidade original. Se utilizar OpenTelemetry já habilitado, não interpretar `github.copilot.cost` como dinheiro: a documentação do CLI o descreve como multiplicador de cobrança.
+Identify the surface: CLI, SDK, or IDE chat. In the CLI, consult `/usage` when
+available, preserving tokens by model and credits in their original unit. If
+using OpenTelemetry that is already enabled, do not interpret
+`github.copilot.cost` as money: the CLI documentation describes it as a billing
+multiplier.
 
-No SDK, verificar a versão: eventos `assistant.usage` podem ser efêmeros e não reaparecer ao retomar a sessão. Totais por `session.usage.getMetrics` dependem de suporte experimental. Não interpretar `session.usage_info.currentTokens` como consumo acumulado. Sem histórico completo, declarar cobertura parcial mesmo se a sessão puder ser retomada normalmente.
+In the SDK, check the version: `assistant.usage` events may be ephemeral and may
+not reappear when resuming a session. Totals from `session.usage.getMetrics`
+depend on experimental support. Do not interpret
+`session.usage_info.currentTokens` as accumulated usage. Without a complete
+history, declare partial coverage even if the session resumes normally.
 
-Fontes:
+Sources:
 - [GitHub — Copilot CLI reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference)
 - [GitHub — SDK usage and billing](https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/usage-and-billing)
 
-## Agente não listado ou ambiente restrito
+## Unlisted agent or restricted environment
 
-Inspecionar recursos disponíveis sem presumir caminhos/nomes de bancos. Se houver fonte oficial de uso, adaptar para as categorias do SKILL.md e registrar o mapeamento. Se não houver terminal, calcular com recurso nativo disponível ou apresentar contadores confiáveis sem agregação não verificável. Sem telemetria/timestamps, relatar entregas comprovadas e marcar as métricas ausentes como indisponíveis.
+Inspect available resources without assuming paths or database names. If an
+official usage source is available, adapt it to the categories in SKILL.md and
+record the mapping. Without a terminal, calculate using an available native
+capability or present reliable counters without unverifiable aggregation.
+Without telemetry/timestamps, report evidenced deliverables and mark missing
+metrics as unavailable.
 
-Para tarifas e câmbio, consultar fontes atuais somente quando o cálculo exigir. Não usar estas páginas de integração como prova de uma tarifa específica. Para acompanhamento futuro, usar as marcações manuais do SKILL.md ou propor instrumentação separada quando solicitada; não prometer recuperar dados que nunca foram registrados.
+Look up current sources for rates and exchange rates only when the calculation
+requires them. Do not use these integration pages as evidence of a particular
+rate. For future tracking, use the manual markers in SKILL.md or propose separate
+instrumentation when requested; do not promise to recover data that was never
+recorded.

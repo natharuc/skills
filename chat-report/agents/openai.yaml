@@ -1,4 +1,13 @@
 interface:
   display_name: "/chat-report"
-  short_description: "Relatório visual de tokens, tempo e custo do chat"
-  default_prompt: "Use $chat-report para compilar e exibir o relatório HTML desta conversa, com tokens, tempo, custo e fontes verificadas."
+  short_description: "Visual reports of chat tokens, work time, and cost"
+  default_prompt: "Use $chat-report to compile and display this conversation’s HTML report in my language, with verified tokens, time, cost, and sources."
+  icon_small: "assets/icon.svg"
+  icon_large: "assets/icon.svg"
+policy:
+  products:
+  - "chatgpt"
+  - "codex"
+  - "api"
+  - "atlas"
+  allow_implicit_invocation: true

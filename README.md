@@ -1,49 +1,53 @@
 # Skills
 
-Skills portáveis para agentes de programação.
+Portable skills for coding agents.
 
 ## chat-report
 
-Gera um relatório **HTML completo, responsivo e offline** sobre uma conversa ou tarefa, com:
+Generate a **complete, responsive, offline HTML report** for a conversation or task, covering:
 
-- tokens de entrada, saída e cache, conforme a telemetria disponível;
-- dedicação humana, execução dos agentes e tempo decorrido separados;
-- cobrança atribuída, referência de API e valor-hora, sem misturar seus significados;
-- fontes, cobertura, entregas e limitações;
-- coleta local de metadados do Cursor em modo somente leitura.
+- input, output, and cache tokens according to available telemetry;
+- human work time, agent execution, and elapsed time as separate measures;
+- attributed charges, API reference costs, and human labor costs without conflating them;
+- sources, coverage, deliverables, and limitations;
+- read-only collection of local Cursor metadata.
 
-A skill deve abrir o relatório na visualização nativa do agente. Quando a interface não suporta HTML, entrega o arquivo pronto e informa essa limitação.
+The skill displays the report using the agent's available preview. When the interface cannot display HTML, it delivers the complete file and explains the limitation.
 
-### Instalação
+Instructions and documentation are written in English. Reports follow the user's requested language or the conversation language, with English as the fallback.
 
-Copie a pasta completa [chat-report](./chat-report), incluindo seus recursos, para a localização do seu agente:
+### Installation
 
-| Agente | Pasta no projeto |
+Copy the complete [chat-report](./chat-report) folder, including its resources, to your agent's skill location:
+
+| Agent | Project folder |
 |---|---|
 | Cursor | `.cursor/skills/chat-report/` |
 | Claude Code | `.claude/skills/chat-report/` |
 | Codex CLI/IDE | `.agents/skills/chat-report/` |
 | Copilot CLI | `.github/skills/chat-report/` |
 
-Consulte [integrações e alternativas](./chat-report/references/platforms.md).
+See [integrations and alternatives](./chat-report/references/platforms.md).
 
-### Uso
+### Usage
 
 ```text
 /chat-report
-/chat-report detalhado
-/chat-report diagnosticar
+/chat-report detailed
+/chat-report diagnose
 ```
 
-No Codex CLI, invoque como `$chat-report`. Para marcar dedicação humana manualmente, use `iniciar`, `pausar`, `retomar` e `encerrar` após o nome da skill.
+In Codex CLI, invoke it as `$chat-report`. To track human work time manually, use `start`, `pause`, `resume`, and `stop` after the skill name.
 
-### Recursos
+Existing Portuguese aliases remain supported: `detalhado`, `diagnosticar`, `iniciar`, `pausar`, `retomar`, and `encerrar`.
 
-- [Instruções completas](./chat-report/SKILL.md)
-- [Coleta no Cursor](./chat-report/references/cursor-local.md)
-- [Cálculo auditável](./chat-report/references/calculation.md)
-- [Geração e visualização HTML](./chat-report/references/html-report.md)
+### Resources
 
-Os scripts opcionais usam Python 3, sem dependências externas. O agente pode executar um fluxo equivalente quando Python não estiver disponível.
+- [Full instructions](./chat-report/SKILL.md)
+- [Cursor collection](./chat-report/references/cursor-local.md)
+- [Auditable calculations](./chat-report/references/calculation.md)
+- [HTML generation and display](./chat-report/references/html-report.md)
 
-A skill não recupera dados que nunca foram registrados. Contadores locais zerados, contexto ocupado e tempo de chat aberto não comprovam consumo zero, tokens faturados ou horas humanas. A coleta precisa ser verificada na instalação real.
+The optional scripts use Python 3 with no external dependencies. The agent can perform an equivalent workflow when Python is unavailable.
+
+The skill cannot recover data that was never recorded. Zero-valued local counters, context occupancy, and time with a chat open do not establish zero consumption, billed tokens, or human work hours. Collection must be verified against the actual installation.

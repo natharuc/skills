@@ -1,86 +1,171 @@
-# Coleta no Cursor
+# Cursor data collection
 
-Executar esta coleta antes de um relatório sobre uma sessão Cursor. O objetivo é comprovar o que existe na instalação correta, sem presumir que todos os dados estejam na transcrição. Acesso ao contexto da conversa não equivale a acesso à telemetria de cobrança.
+Contents: [identify the session](#1-identify-the-machine-and-conversation),
+[locate sources](#2-locate-the-sources), [read-only inspection](#3-inspect-in-read-only-mode),
+[interpret fields](#4-interpret-the-fields-found),
+[usage and billing](#5-supplement-usage-and-billing-when-possible),
+[gap diagnosis](#6-required-gap-diagnosis), [sources](#sources-and-scope-of-evidence).
 
-## 1. Identificar máquina e conversa
+Perform this collection before reporting on a Cursor session. The goal is to
+establish what exists in the correct installation, without assuming all data is
+in the transcript. Access to the conversation context is not equivalent to access
+to billing telemetry.
 
-Identificar se o terminal está na máquina da interface Cursor, em WSL, SSH ou ambiente remoto. Um banco ausente no servidor não demonstra ausência no computador que hospeda a interface. Identificar perfil, versão e diretório de dados personalizado quando houver; não substituir o diretório pessoal do usuário por um caminho inventado.
+## 1. Identify the machine and conversation
 
-Obter o composer ID da conversa atual a partir de metadados disponíveis ou da transcrição correspondente e validar a associação ao projeto. Não escolher a conversa mais recente da conta nem um ID de outra tarefa. Se só houver o projeto, inspecionar os índices de metadados do workspace antes de pedir que o usuário procure manualmente.
+Determine whether the terminal is on the machine running the Cursor interface,
+in WSL, over SSH, or in a remote environment. A missing database on a server does
+not demonstrate its absence on the computer hosting the interface. Identify the
+profile, version, and custom data directory, if any; do not substitute an invented
+path for the user's home directory.
 
-## 2. Localizar as fontes
+Obtain the current conversation's composer ID from available metadata or the
+corresponding transcript, and validate its association with the project. Do not
+choose the account's most recent conversation or an ID from another task. If only
+the project is known, inspect workspace metadata indexes before asking the user
+to search manually.
 
-| Sistema | Candidato inicial ao banco de conversas |
+## 2. Locate the sources
+
+| System | Initial candidate for the conversation database |
 |---|---|
 | Windows | `%APPDATA%\Cursor\User\globalStorage\state.vscdb` |
 | macOS | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` |
-| Linux | `~/.config/Cursor/User/globalStorage/state.vscdb`, respeitando `XDG_CONFIG_HOME` |
+| Linux | `~/.config/Cursor/User/globalStorage/state.vscdb`, respecting `XDG_CONFIG_HOME` |
 
-Resolver variáveis pelo ambiente real. Se houver diretório de dados personalizado ou outro perfil, usar seu caminho conhecido. Usar `User/workspaceStorage/<workspace>/workspace.json` e `state.vscdb` do workspace correspondente apenas quando necessário para associação ou esquema antigo. Não varrer todos os discos nem despejar outras conversas.
+Resolve variables from the actual environment. If a custom data directory or
+another profile exists, use its known path. Use the corresponding workspace's
+`User/workspaceStorage/<workspace>/workspace.json` and `state.vscdb` only when
+needed for association or an older schema. Do not scan all drives or dump other
+conversations.
 
-Tratar a transcrição como fonte de conteúdo. Tratar registros de atribuição de edições como evidência complementar de eventos de código, sem convertê-los em todas as requisições ou todas as horas da tarefa. A simples ausência de tokens nessas duas fontes não encerra a investigação.
+Treat the transcript as a content source. Treat edit-attribution records as
+supplementary evidence of code events, without converting them into every request
+or all time spent on the task. The absence of tokens in these two sources alone
+does not end the investigation.
 
-## 3. Inspecionar em modo somente leitura
+## 3. Inspect in read-only mode
 
-Executar o coletor incluído na skill, no computador que contém o banco:
+Run the collector bundled with the skill on the computer containing the database:
 
 ```text
-python <pasta-da-skill>/scripts/inspect_cursor.py --conversation <composer-id>
+python <skill-directory>/scripts/inspect_cursor.py --conversation <composer-id>
 ```
 
-Para um caminho confirmado ou perfil personalizado:
+For a confirmed path or custom profile:
 
 ```text
-python <pasta-da-skill>/scripts/inspect_cursor.py --conversation <composer-id> --db "<caminho-completo>/state.vscdb"
+python <skill-directory>/scripts/inspect_cursor.py --conversation <composer-id> --db "<full-path>/state.vscdb"
 ```
 
-No Windows, usar `py -3` se esse for o executável disponível. O script não exige bibliotecas externas e imprime JSON. Não precisa criar arquivo, acessar rede, ler credenciais, fechar o Cursor ou modificar o banco. Sem Python, executar consultas equivalentes com uma ferramenta SQLite já disponível; não abandonar a coleta só porque o script não pode rodar.
+On Windows, use `py -3` if that is the available executable. The script requires
+no external libraries and prints JSON. It does not need to create a file, access
+the network, read credentials, close Cursor, or modify the database. Without
+Python, run equivalent queries using an already available SQLite tool; do not
+abandon collection merely because the script cannot run.
 
-O coletor usa `mode=ro`, transação de leitura, filtros pelo ID e limites explícitos. Evitar `immutable=1` em banco ativo, pois pode ignorar WAL. Se precisar de snapshot, usar backup SQLite consistente ou mecanismo equivalente que preserve a visão do WAL; não copiar somente o arquivo principal em uso. Não executar migrações, limpeza, checkpoint ou `VACUUM`.
+The collector uses `mode=ro`, a read transaction, ID filters, and explicit limits.
+Avoid `immutable=1` on a live database because it may ignore the WAL. If a snapshot
+is needed, use a consistent SQLite backup or an equivalent mechanism that
+preserves the WAL view; do not copy only the main file while it is in use. Do not
+run migrations, cleanup, checkpoints, or `VACUUM`.
 
-Detectar as tabelas existentes. Em esquemas observados por parsers independentes, `cursorDiskKV` guarda `composerData:<id>` e `bubbleId:<id>:<bubble-id>`. Versões recentes também podem ter `composerHeaders`, consultável por `composerId`. Versões antigas podem ter índices no `ItemTable` (`composer.composerData` ou `composer.composerHeaders`). Os formatos internos não são uma API estável; se houver outro esquema, inspecioná-lo sem afirmar que a sessão desapareceu.
+Detect the existing tables. In schemas observed by independent parsers,
+`cursorDiskKV` stores `composerData:<id>` and `bubbleId:<id>:<bubble-id>`. Recent
+versions may also have `composerHeaders`, which can be queried by `composerId`.
+Older versions may have indexes in `ItemTable` (`composer.composerData` or
+`composer.composerHeaders`). These internal formats are not a stable API; if a
+different schema exists, inspect it without claiming the session has disappeared.
 
-O script cobre o KV e cabeçalhos recentes. Se retornar `conversation_not_found_in_supported_tables`, verificar associação de máquina/perfil/ID e índices antigos antes de concluir que não existem registros. Para localizar um índice antigo, ler apenas sua chave conhecida e filtrar o JSON pelo composer ID; não imprimir todo o índice. Sem possibilidade de acesso, registrar precisamente a limitação.
+The script covers the KV store and recent headers. If it returns
+`conversation_not_found_in_supported_tables`, check the machine/profile/ID
+association and older indexes before concluding that no records exist. To locate
+an older index, read only its known key and filter the JSON by composer ID; do
+not print the entire index. If access is impossible, record the precise limitation.
 
-## 4. Interpretar os campos encontrados
+## 4. Interpret the fields found
 
-- Considerar cada `candidate_fields` uma evidência bruta que ainda precisa de semântica, unidade e cobertura. O coletor não transforma candidatos em um relatório automaticamente.
-- Verificar `tokenCount` e quaisquer campos de uso realmente presentes. **Contadores preenchidos com zero podem ser valores padrão**, especialmente quando toda a conversa está zerada. Não apresentar isso como consumo zero nem calcular custo zero.
-- Não converter `contextUsagePercent`, ocupação de contexto ou limite em consumo acumulado. Um contador positivo por bubble ainda exige reconciliação por requisição; uma resposta pode conter vários segmentos.
-- Preservar timestamps em seu formato de origem. Timestamps de cabeçalho podem estar em epoch ms; timestamps de mensagens podem estar em RFC3339. Validar datas, fuso e unidade. Não assumir que todo número chamado `time` seja relógio de calendário.
-- Se houver início/fim de requisição no mesmo relógio, validar o significado, deduplicar, recortar no corte e unir intervalos. Não subtrair relógio monotônico de epoch. Chamar o resultado duração das requisições observadas, sem presumir cobertura de toda a execução do agente.
-- Se só houver horários de mensagens, informar o período conhecido. Quando o usuário pedir aproximação de atividade, aplicar a regra de janelas do SKILL.md com rótulo de estimativa. Dedicação humana permanece dependente de marcações/atividade atribuída, não do banco de mensagens.
-- Datas de arquivo e `lastUpdatedAt` não são duração ativa. Registros abertos, valores truncados, blobs grandes não lidos, timeouts e schemas desconhecidos tornam a inspeção parcial.
+- Treat each `candidate_fields` entry as raw evidence that still needs semantics,
+  units, and coverage. The collector does not automatically turn candidates into
+  a report.
+- Check `tokenCount` and any usage fields that are actually present. **Counters
+  filled with zero may be default values**, especially when the whole
+  conversation is zeroed. Do not present this as zero consumption or calculate
+  zero cost.
+- Do not convert `contextUsagePercent`, context occupancy, or a limit into
+  accumulated usage. A positive per-bubble counter still requires request-level
+  reconciliation; a response may contain multiple segments.
+- Preserve timestamps in their source format. Header timestamps may use epoch
+  milliseconds; message timestamps may use RFC3339. Validate dates, timezones,
+  and units. Do not assume every number named `time` is a wall-clock timestamp.
+- If request start/end timestamps share the same clock, validate their meaning,
+  deduplicate, clip at the cutoff, and merge intervals. Do not subtract a
+  monotonic clock from epoch time. Call the result the duration of observed
+  requests, without assuming coverage of the agent's entire execution.
+- If only message timestamps exist, state the known period. When the user asks
+  for an activity approximation, apply the windowing rule in SKILL.md and label
+  it as an estimate. Human effort still depends on markers or attributed
+  activity, not the message database.
+- File timestamps and `lastUpdatedAt` are not active duration. Open records,
+  truncated values, unread large blobs, timeouts, and unknown schemas make the
+  inspection partial.
 
-O coletor não imprime corpo de prompts, respostas ou resultados de ferramentas; registra somente uma lista restrita de campos conhecidos de métricas e tempo. Nomes de modelo em texto não são emitidos. Uma lista vazia não prova que um novo schema não tenha outros metadados: inspecionar a estrutura localmente quando houver divergência. Não colar um dump integral do banco em ferramentas externas. Se precisar ler conteúdo para desambiguar identidade, fazê-lo localmente e apenas para a conversa alvo.
+The collector does not print prompt bodies, responses, or tool results; it
+records only an allowlist of known metric and time fields. Text model names are
+not emitted. An empty list does not prove that a new schema has no other metadata:
+inspect the structure locally when it differs. Do not paste a complete database
+dump into external tools. If content must be read to disambiguate identity, do
+so locally and only for the target conversation.
 
-## 5. Completar uso e cobrança quando possível
+## 5. Supplement usage and billing when possible
 
-Se o SDK oficial já estiver disponível, a identidade do agente estiver comprovada e houver acesso autorizado, verificar a consulta de uso existente, como `Agent.getUsage()`. Não presumir que qualquer composer ID de IDE seja aceito pela API; confirmar o mapeamento e a superfície suportada. Não criar outro agente para consultar uso anterior e não procurar/expor tokens de autenticação.
+If the official SDK is already available, the agent's identity has been verified,
+and access is authorized, check the existing usage query, such as
+`Agent.getUsage()`. Do not assume the API accepts every IDE composer ID; confirm
+the mapping and supported surface. Do not create another agent to query earlier
+usage, or search for or expose authentication tokens.
 
-O SDK distingue contagem ao vivo de uso faturado e pode devolver custo ainda ausente enquanto ele consolida. Preservar essas distinções. Alternativamente, usar exportação/painel de consumo ou Admin API já acessível. Vincular registros por ID verificável; coincidência de horário/modelo não basta para atribuição exata. Não exigir conta administrativa como primeira opção de um usuário individual.
+The SDK distinguishes live counts from billed usage and may return a cost that
+is still missing while it settles. Preserve these distinctions. Alternatively,
+use an already accessible usage export/dashboard or Admin API. Link records by
+verifiable ID; matching time/model is not enough for exact attribution. Do not
+require an administrative account as the first option for an individual user.
 
-Para dados não acessíveis do lado do agente, pedir somente o registro/exportação necessário à lacuna remanescente. Não prometer que o banco local tem o detalhamento de cache, custo ou atenção humana.
+For data the agent cannot access, request only the record/export needed to close
+the remaining gap. Do not promise that the local database contains cache
+breakdowns, costs, or human attention data.
 
-## 6. Diagnóstico obrigatório de lacunas
+## 6. Required gap diagnosis
 
-Registrar no relatório, de forma resumida:
+Briefly record the following in the report:
 
-| Fonte | Resultado da inspeção | Consequência |
+| Source | Inspection result | Consequence |
 |---|---|---|
-| Banco de conversas | caminho, tabela, composer encontrado ou motivo de falha | identidade e abrangência verificadas ou pendentes |
-| Mensagens | quantidade inspecionada, campos de tempo e uso disponíveis | períodos/contadores aproveitáveis ou ausentes |
-| Uso/faturamento | origem consultada, vínculo por ID e disponibilidade | custo atribuído ou lacuna específica |
+| Conversation database | Path, table, composer found or reason for failure | Identity and coverage verified or pending |
+| Messages | Number inspected, available time and usage fields | Usable or missing periods/counters |
+| Usage/billing | Source consulted, ID linkage, and availability | Attributed cost or a specific gap |
 
-Distinguir **não coletado**, **inacessível neste ambiente**, **formato não suportado**, **campo ausente**, **contador padrão não confiável** e **medição disponível**. Não usar a frase absoluta “o Cursor não tem essas informações” com base em uma única transcrição ou instalação.
+Distinguish **not collected**, **inaccessible in this environment**,
+**unsupported format**, **missing field**, **unreliable default counter**, and
+**available measurement**. Do not make the absolute claim “Cursor does not have
+this information” based on a single transcript or installation.
 
-Só afirmar que a nova coleta resolveu o caso real após executá-la na máquina/sessão do usuário. Testes com bancos sintéticos validam o código, não a presença de métricas naquela instalação.
+Only claim the new collection resolved the actual case after running it on the
+user's machine/session. Tests with synthetic databases validate the code, not
+the presence of metrics in that installation.
 
-## Fontes e escopo das evidências
+## Sources and scope of evidence
 
-- [Cursor SDK — getUsage](https://cursor.com/docs/sdk/typescript): API oficial de uso por agente; confirmar versão, identificação e acesso.
-- [Cursor — Admin API](https://cursor.com/docs/account/teams/admin-api): uso por evento, quando disponível para a conta.
-- [txcript — formato Cursor Desktop](https://github.com/skillsynchq/txcript/blob/main/docs/formats/cursor-desktop.md): documentação do autor de um parser sobre schema, timestamps e `tokenCount`; evidência de implementação independente, não contrato oficial do Cursor.
-- [cursaves — armazenamento](https://github.com/Callum-Ward/cursaves/blob/main/docs/how-cursor-stores-chats.md): investigação do autor sobre armazenamento/índices de versões anteriores; mesma ressalva de compatibilidade.
+- [Cursor SDK — getUsage](https://cursor.com/docs/sdk/typescript): official
+  agent usage API; confirm version, identity, and access.
+- [Cursor — Admin API](https://cursor.com/docs/account/teams/admin-api):
+  per-event usage, when available for the account.
+- [txcript — Cursor Desktop format](https://github.com/skillsynchq/txcript/blob/main/docs/formats/cursor-desktop.md):
+  a parser author's documentation of schema, timestamps, and `tokenCount`;
+  evidence from an independent implementation, not an official Cursor contract.
+- [cursaves — storage](https://github.com/Callum-Ward/cursaves/blob/main/docs/how-cursor-stores-chats.md):
+  the author's investigation of storage/indexes in earlier versions; the same
+  compatibility caveat applies.
 
-Verificado em 29/09/2026. Revalidar formatos na instalação alvo antes de calcular.
+Verified on 2026-09-29. Revalidate formats in the target installation before
+calculating.

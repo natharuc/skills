@@ -1,114 +1,119 @@
-# Cálculo offline opcional
+# Optional offline calculation
 
-Sumário: [contrato de entrada](#contrato-de-entrada),
-[saída e interpretação](#saída-e-interpretação),
-[exemplo executável](#exemplo-executável).
+Contents: [input contract](#input-contract),
+[output and interpretation](#output-and-interpretation),
+[runnable example](#runnable-example).
 
-`scripts/calculate.py` recebe um arquivo JSON normalizado, usa apenas Python 3
-stdlib e imprime JSON em stdout. Não coleta logs, consulta preços, acessa rede,
-altera arquivos nem infere tempo a partir de mensagens. Erros saem em JSON em
-stderr com código 2. Execute com `python` (ou `python3`, conforme a instalação):
+`scripts/calculate.py` accepts a normalized JSON file, uses only the Python 3
+standard library, and prints JSON to stdout. It does not collect logs, look up
+prices, access the network, change files, or infer time from messages. Errors
+are written as JSON to stderr with exit code 2. Run it with `python` (or
+`python3`, depending on the installation):
 
 ```sh
 python scripts/calculate.py normalized.json
 ```
 
-## Contrato de entrada
+## Input contract
 
-- `scope`: `label` não vazio, `cutoff` obrigatório e `start` opcional. Datas e
-  horas seguem `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` ou offset `±HH:MM`; timezone é
-  obrigatório. O adaptador deve selecionar apenas requisições do escopo até o
-  cutoff; o script não recebe timestamps de requisições nem verifica essa seleção.
-- `coverage`: `complete` ou `partial`, aplicado ao conjunto de dados do escopo.
-  Use `complete` somente com evidência de cobertura completa das fontes relevantes.
-- `coverage_by_metric`: objeto opcional com chaves opcionais `tokens`, `agent` e
-  `human`, cada qual `complete` ou `partial`. Cada chave substitui a cobertura
-  global apenas para sua métrica; chaves omitidas herdam `coverage`. A cobertura
-  de `tokens` também governa custos. Por exemplo, tokens parciais e observação
-  humana completa: `"coverage": "partial", "coverage_by_metric": {"human": "complete"}`.
-- `requests`: lista opcional. Cada objeto contém `id` com strings não vazias
-  `provider`, `session`, `request`, e `tokens` com **todas** as cinco categorias:
-  `input_uncached`, `cache_read`, `cache_write_short`, `cache_write_long`, `output`.
-  Cada quantidade é inteiro ≥ 0 ou `null`. As categorias precisam ser **disjuntas**;
-  normalize contadores inclusivos do provedor antes de chamar o script. Cache lido
-  e cache escrito não podem permanecer incluídos em `input_uncached`. Reasoning
-  já incluído no output não deve ser adicionado novamente. O script não aceita
-  uma categoria separada de reasoning.
-- Zero significa ausência confirmada naquela categoria. Use `null` se o valor
-  não estiver disponível; não presuma zero para um campo ausente no log.
-- `pricing` é opcional por requisição; omita o objeto quando não houver preços.
-  Quando presente, exige `currency` (três letras maiúsculas), `source` (referência
-  não vazia), `as_of` (`YYYY-MM-DD`, data da tabela aplicável) e `per_million` com
-  as mesmas cinco categorias. Taxas são strings decimais não negativas, sem
-  expoente, ou `null`; por exemplo `"2.50"`. Registre preços aplicáveis ao modelo,
-  tier, janela de contexto, operação e data escolhidos. Uma URL em `source` é
-  apenas metadado: o script não a visita nem verifica a tabela.
-- `agent_intervals`: lista opcional de objetos `start`/`end` e `agent_id` (string
-  não vazia e estável para o agente observado). Cada intervalo representa execução
-  fechada e observada. Sobreposições e duplicatas do mesmo agente são unidas antes
-  de somar esforço; IDs diferentes preservam paralelismo entre agentes.
-- `human_intervals`: lista opcional de `start`/`end` e `basis`, obrigatoriamente
-  `measured` ou `declared`. Só inclua tempo humano explicitamente medido ou
-  declarado. Datas de mensagens, execução de ferramentas e silêncio não medem
-  atenção humana. Intervalos declarados continuam sendo declarações, não medições.
-- Intervalos precisam ter `start ≤ end ≤ cutoff`; quando `scope.start` existe,
-  nenhum intervalo pode começar antes dele. Não há clipping automático. Finais
-  ausentes ou `null` são rejeitados: reporte atividades abertas fora do cálculo.
-  Uma duração zero só deve entrar se observada ou explicitamente declarada.
-- Campos desconhecidos, categorias omitidas, tipos incorretos e chaves JSON
-  repetidas são rejeitados. Listas omitidas e listas vazias produzem métricas
-  indisponíveis (`null`), não evidência de consumo ou duração zero.
+- `scope`: a nonempty `label`, a required `cutoff`, and an optional `start`.
+  Timestamps use `YYYY-MM-DDTHH:MM:SS[.ffffff]Z` or an offset of `±HH:MM`; a
+  timezone is required. The adapter must select only requests within the scope
+  up to the cutoff; the script does not receive request timestamps or verify
+  that selection.
+- `coverage`: `complete` or `partial`, applying to the dataset for the scope.
+  Use `complete` only with evidence that the relevant sources provide complete
+  coverage.
+- `coverage_by_metric`: an optional object with optional keys `tokens`, `agent`,
+  and `human`, each set to `complete` or `partial`. Each key overrides global
+  coverage only for its metric; omitted keys inherit `coverage`. Token coverage
+  also governs costs. For example, partial token coverage and complete human
+  observation: `"coverage": "partial", "coverage_by_metric": {"human": "complete"}`.
+- `requests`: an optional list. Each object contains an `id` with nonempty
+  strings for `provider`, `session`, and `request`, and `tokens` with **all** five
+  categories: `input_uncached`, `cache_read`, `cache_write_short`,
+  `cache_write_long`, and `output`. Each count is an integer ≥ 0 or `null`.
+  Categories must be **disjoint**; normalize the provider's inclusive counters
+  before calling the script. Cache reads and writes must not remain included in
+  `input_uncached`. Do not add reasoning tokens again if they are already included
+  in output. The script does not accept a separate reasoning category.
+- Zero means confirmed absence in that category. Use `null` when the value is
+  unavailable; do not assume zero for a field missing from the log.
+- `pricing` is optional per request; omit the object when prices are unavailable.
+  When present, it requires `currency` (three uppercase letters), `source`
+  (a nonempty reference), `as_of` (`YYYY-MM-DD`, the date of the applicable price
+  schedule), and `per_million` with the same five categories. Rates are
+  nonnegative decimal strings without an exponent, or `null`; for example,
+  `"2.50"`. Record prices applicable to the selected model, tier, context window,
+  operation, and date. A URL in `source` is metadata only: the script does not
+  visit it or verify the price schedule.
+- `agent_intervals`: an optional list of objects containing `start`/`end` and
+  `agent_id` (a nonempty, stable string identifying the observed agent). Each
+  interval represents observed execution with a known end. Overlapping and
+  duplicate intervals for the same agent are merged before effort is summed;
+  different IDs preserve parallel work by separate agents.
+- `human_intervals`: an optional list containing `start`/`end` and `basis`, which
+  must be `measured` or `declared`. Include only explicitly measured or declared
+  human time. Message timestamps, tool execution, and silence do not measure
+  human attention. Declared intervals remain declarations, not measurements.
+- Intervals must satisfy `start ≤ end ≤ cutoff`; when `scope.start` is present,
+  no interval may begin before it. There is no automatic clipping. Missing or
+  `null` end timestamps are rejected: report open activities outside the
+  calculation. Include a zero duration only when observed or explicitly declared.
+- Unknown fields, omitted categories, incorrect types, and duplicate JSON keys
+  are rejected. Omitted and empty lists produce unavailable metrics (`null`),
+  not evidence of zero usage or duration.
 
-## Saída e interpretação
+## Output and interpretation
 
-`known_subtotal` soma apenas valores conhecidos; `total` só é preenchido se há
-evidência, nenhum componente está ausente e a cobertura efetiva daquela métrica
-é `complete`. Com cobertura efetiva `partial`, seu `total` permanece `null`, mesmo
-quando o subtotal é calculável. A saída repete a cobertura global e as coberturas
-efetivas em `coverage_by_metric`. `coverage` de cada resultado calculado é
-`complete`, `partial` ou `unavailable`;
-`known_values`/`missing_values` contam componentes, não tokens. Para tempo calendário,
-componentes são os intervalos já unidos; não representam atividades individuais.
-Nenhum subtotal deve ser apresentado como total completo do escopo.
+`known_subtotal` sums only known values; `total` is populated only when there is
+evidence, no component is missing, and the metric's effective coverage is
+`complete`. With effective coverage of `partial`, `total` remains `null` even
+when the subtotal can be calculated. The output repeats global coverage and
+effective coverage in `coverage_by_metric`. Each calculated result has a
+`coverage` of `complete`, `partial`, or `unavailable`;
+`known_values`/`missing_values` count components, not tokens. For calendar time,
+components are the merged intervals; they do not represent individual activities.
+Never present a subtotal as the complete total for the scope.
 
-Requisições com o mesmo trio `provider/session/request` e conteúdo igual são
-contadas uma vez. Mesmo ID com conteúdo diferente causa erro, inclusive preços
-ou metadados divergentes. Reconcilie a origem antes de calcular; não escolha uma
-versão silenciosamente.
+Requests with the same `provider/session/request` tuple and identical contents
+are counted once. The same ID with different contents causes an error, including
+conflicting prices or metadata. Reconcile the source before calculating; do not
+silently choose one version.
 
-Custos são **referência de API**, calculados com `Decimal` por requisição/categoria
-como `tokens × taxa / 1.000.000`, preservados como strings decimais sem arredondar
-para centavos. Não são custo cobrado, fatura, preço de assinatura nem economia
-financeira observada. Não há total entre moedas: veja `currency_buckets` e as
-linhas em `reference_api_cost.requests`. Uma categoria com zero tokens confirmado
-tem custo zero mesmo com taxa desconhecida, desde que a moeda esteja identificada;
-tokens desconhecidos continuam indisponíveis. Requisições sem `pricing` aparecem
-em `unassigned_currency_requests` e impedem totais completos dos buckets, pois
-sua moeda também é desconhecida. Taxas diferentes por requisição são preservadas.
-O calculador suporta apenas essas cinco categorias: se uma mesma requisição tiver
-modalidades ou faixas com tarifas diferentes dentro de uma categoria, calcule
-separadamente fora do script com evidência, sem inventar tarifa média ou número
-de requisições.
+Costs are an **API reference estimate**, calculated with `Decimal` for each
+request/category as `tokens × rate / 1,000,000` and preserved as decimal strings
+without rounding to cents. They are not billed cost, an invoice, a subscription
+price, or observed financial savings. There is no total across currencies: see
+`currency_buckets` and the rows in `reference_api_cost.requests`. A category with
+confirmed zero tokens has zero cost even if its rate is unknown, provided the
+currency is identified; unknown token counts remain unavailable. Requests
+without `pricing` appear in `unassigned_currency_requests` and prevent complete
+bucket totals because their currency is also unknown. Different rates per
+request are preserved. The calculator supports only these five categories: if a
+single request has modalities or tiers with different rates within one category,
+calculate them separately outside the script with supporting evidence, without
+inventing an average rate or a number of requests.
 
-`time.agent.calendar_seconds` é a duração da **união** dos intervalos: paralelismo
-não duplica tempo calendário. `aggregate_agent_seconds` soma as durações da união
-dos intervalos **por agente** e pode ser maior quando agentes distintos trabalham
-em paralelo. Repetições ou sobreposições do mesmo `agent_id` não aumentam esse
-esforço. `time.human.calendar_seconds`
-também usa união, exclusivamente dos intervalos humanos fornecidos.
-`elapsed_scope_seconds` é simplesmente `cutoff − scope.start`, ou `null` sem start;
-não mede execução, esforço do agente, atenção humana ou tempo manual evitado.
-Durações são strings decimais em segundos, com precisão de microssegundos.
+`time.agent.calendar_seconds` is the duration of the **union** of intervals:
+parallel execution does not double-count calendar time. `aggregate_agent_seconds`
+sums the durations of the union of intervals **per agent** and can be higher when
+distinct agents work in parallel. Repeated or overlapping intervals for the same
+`agent_id` do not increase this effort. `time.human.calendar_seconds` also uses
+the union, exclusively of the human intervals supplied.
+`elapsed_scope_seconds` is simply `cutoff − scope.start`, or `null` without a
+start; it does not measure execution, agent effort, human attention, or manual
+time saved. Durations are decimal strings in seconds with microsecond precision.
 
-## Exemplo executável
+## Runnable example
 
-Salve como `normalized.json` e execute o comando acima a partir da pasta da skill.
-Os preços abaixo são **fictícios**, apenas para conferir a aritmética.
+Save this as `normalized.json` and run the command above from the skill directory.
+The prices below are **fictional**, provided only to check the arithmetic.
 
 ```json
 {
   "scope": {
-    "label": "Demonstração local",
+    "label": "Local demonstration",
     "start": "2026-09-29T10:00:00Z",
     "cutoff": "2026-09-29T10:10:00Z"
   },
@@ -124,7 +129,7 @@ Os preços abaixo são **fictícios**, apenas para conferir a aritmética.
     },
     "pricing": {
       "currency": "USD",
-      "source": "Tabela fictícia para demonstração",
+      "source": "Fictional price schedule for demonstration",
       "as_of": "2026-09-29",
       "per_million": {
         "input_uncached": "2",
@@ -145,7 +150,7 @@ Os preços abaixo são **fictícios**, apenas para conferir a aritmética.
 }
 ```
 
-Resultados: 3.600 tokens; referência API de `"0.00665"` USD; tempo calendário de
-agente `"360"` s; esforço agregado `"480"` s; tempo humano declarado `"60"` s;
-escopo decorrido `"600"` s. Remover os intervalos humanos torna seu tempo `null`;
-trocar `coverage` para `partial` preserva os subtotais, mas torna os totais `null`.
+Results: 3,600 tokens; API reference estimate of `"0.00665"` USD; agent calendar
+time of `"360"` s; aggregate effort of `"480"` s; declared human time of `"60"` s;
+elapsed scope of `"600"` s. Removing the human intervals makes human time `null`;
+changing `coverage` to `partial` preserves subtotals but makes totals `null`.
